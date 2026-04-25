@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin · Photography Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --w:#fff;--off:#f5f5f3;--blue:#1a6bff;--blue-lt:#e8f1ff;--blue-dk:#0d4fd1;
+    --ink:#0e0e0e;--muted:#8a8a8a;--bd:#e4e4e0;
+    --red:#dc2626;--red-lt:#fef2f2;--green:#059669;
+    --serif:'Playfair Display',Georgia,serif;
+    --sans:'Inter',system-ui,sans-serif;
+  }
+  body{
+    background:var(--off);color:var(--ink);
+    font-family:var(--sans);font-weight:400;font-size:14px;line-height:1.55;
+    -webkit-font-smoothing:antialiased;min-height:100vh;
+  }
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,textarea,select{
+    font:inherit;width:100%;padding:9px 12px;
+    background:var(--w);border:1px solid var(--bd);border-radius:6px;
+    transition:border-color .15s;
+  }
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--blue)}
+  textarea{resize:vertical;min-height:70px}
+  label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px}
+  .row{display:grid;gap:12px}
+  .row.cols-2{grid-template-columns:1fr 1fr}
+  .row.cols-3{grid-template-columns:1fr 1fr 1fr}
+  .row.cols-5{grid-template-columns:repeat(5,1fr)}
+  @media(max-width:720px){
+    .row.cols-2,.row.cols-3,.row.cols-5{grid-template-columns:1fr}
+  }
+
+  /* ── HEADER ── */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--bd);
+    padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .logo{font-family:var(--serif);font-style:italic;font-size:18px}
+  .logo em{color:var(--blue)}
+  .header-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted)}
+  .header-right a{font-size:13px}
+
+  /* ── BUTTONS ── */
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:8px 16px;border-radius:6px;font-weight:500;font-size:13px;
+    transition:background .15s,color .15s,border-color .15s;
+    border:1px solid transparent;
+  }
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{background:var(--blue-dk)}
+  .btn-ghost{border-color:var(--bd);color:var(--ink);background:var(--w)}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-danger{color:var(--red);border-color:var(--bd);background:var(--w)}
+  .btn-danger:hover{background:var(--red-lt);border-color:var(--red)}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+  /* ── LAYOUT ── */
+  main{max-width:1100px;margin:0 auto;padding:28px}
+  section{
+    background:var(--w);border:1px solid var(--bd);border-radius:10px;
+    padding:22px;margin-bottom:18px;
+  }
+  section h2{
+    font-family:var(--serif);font-size:22px;font-weight:400;
+    margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;
+  }
+  section h2 .count{
+    font-family:var(--sans);font-size:11px;color:var(--muted);
+    letter-spacing:.15em;text-transform:uppercase;
+  }
+  hr{border:none;border-top:1px solid var(--bd);margin:18px 0}
+
+  /* ── LOGIN ── */
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 30% 20%,#e8f1ff 0%,transparent 60%),var(--off);
+  }
+  .login-card{
+    width:100%;max-width:380px;background:var(--w);
+    border:1px solid var(--bd);border-radius:12px;padding:32px;
+  }
+  .login-card h1{
+    font-family:var(--serif);font-size:26px;font-weight:400;margin-bottom:6px;
+  }
+  .login-card .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+
+  /* ── SERIES LIST ── */
+  .series-card{
+    border:1px solid var(--bd);border-radius:10px;
+    padding:16px;margin-bottom:14px;background:var(--w);
+  }
+  .series-card .head{
+    display:flex;align-items:center;gap:14px;cursor:pointer;
+  }
+  .series-card .cover-thumb{
+    width:72px;height:72px;background:var(--off);border-radius:6px;
+    object-fit:cover;flex-shrink:0;
+  }
+  .series-card .meta{flex:1;min-width:0}
+  .series-card .meta .title{font-weight:500;font-size:15px}
+  .series-card .meta .sub{font-size:12px;color:var(--muted)}
+  .series-card .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .series-card .body{
+    margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;
+  }
+  .series-card.open .body{display:block}
+  .chev{transition:transform .2s;color:var(--muted);font-size:12px}
+  .series-card.open .chev{transform:rotate(90deg)}
+
+  /* ── PHOTOS GRID ── */
+  .photos{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:10px;margin-top:12px;
+  }
+  .photo{
+    position:relative;background:var(--off);border-radius:6px;overflow:hidden;
+    aspect-ratio:4/3;border:1px solid var(--bd);
+  }
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo .ph-info{
+    position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.85));
+    color:#fff;padding:18px 8px 6px;font-size:11px;line-height:1.3;
+  }
+  .photo .ph-info .t{font-weight:500;margin-bottom:1px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .photo .ph-info .e{opacity:.85;font-size:10px}
+  .photo .ph-actions{
+    position:absolute;top:6px;right:6px;display:flex;gap:4px;
+    opacity:0;transition:opacity .15s;
+  }
+  .photo:hover .ph-actions{opacity:1}
+  .ph-btn{
+    background:rgba(255,255,255,.95);border-radius:4px;padding:4px 7px;
+    font-size:11px;font-weight:500;color:var(--ink);
+  }
+  .ph-btn.del{color:var(--red)}
+  .ph-btn:hover{background:#fff}
+
+  /* ── DROPZONE ── */
+  .drop{
+    border:2px dashed var(--bd);border-radius:8px;padding:22px;text-align:center;
+    color:var(--muted);background:var(--off);transition:border-color .15s,background .15s;
+  }
+  .drop.hover{border-color:var(--blue);background:var(--blue-lt);color:var(--blue)}
+  .drop input[type=file]{display:none}
+
+  /* ── TOAST ── */
+  .toast{
+    position:fixed;bottom:24px;right:24px;z-index:200;
+    background:var(--ink);color:#fff;border-radius:6px;padding:10px 16px;
+    font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.18);
+    opacity:0;transform:translateY(8px);transition:.2s;
+    pointer-events:none;max-width:340px;
+  }
+  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.error{background:var(--red)}
+  .toast.success{background:var(--green)}
+
+  /* ── MODAL ── */
+  .modal{
+    position:fixed;inset:0;z-index:100;display:none;
+    align-items:center;justify-content:center;padding:24px;
+    background:rgba(14,14,14,.55);backdrop-filter:blur(4px);
+  }
+  .modal.open{display:flex}
+  .modal-card{
+    background:var(--w);border-radius:10px;padding:24px;
+    width:100%;max-width:520px;max-height:90vh;overflow:auto;
+  }
+  .modal-card h3{
+    font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:14px;
+  }
+  .modal-actions{
+    display:flex;gap:8px;justify-content:flex-end;margin-top:18px;
+  }
+
+  /* ── EMPTY ── */
+  .empty{
+    text-align:center;padding:36px;color:var(--muted);font-size:13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN VIEW ── -->
+<div id="view-login" class="login-wrap">
+  <form class="login-card" id="login-form">
+    <h1>Admin <em style="color:var(--blue);font-style:italic">login</em></h1>
+    <div class="sub">Sign in to manage your photography gallery.</div>
+
+    <label for="li-user">Username</label>
+    <input id="li-user" name="username" autocomplete="username" required/>
+
+    <div style="height:12px"></div>
+
+    <label for="li-pass">Password</label>
+    <input id="li-pass" name="password" type="password" autocomplete="current-password" required/>
+
+    <div style="height:18px"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" type="submit">Sign in</button>
+    <div id="li-err" style="color:var(--red);font-size:12px;margin-top:10px;min-height:14px"></div>
+  </form>
+</div>
+
+<!-- ── DASHBOARD VIEW ── -->
+<div id="view-dash" style="display:none">
+  <header>
+    <div class="logo">irvan <em>maulana</em> · admin</div>
+    <div class="header-right">
+      <a href="/" target="_blank">View site ↗</a>
+      <button class="btn btn-ghost btn-sm" id="btn-logout">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Add Series form -->
+    <section>
+      <h2>New series <span class="count">add</span></h2>
+      <form id="form-new-series">
+        <div class="row cols-3">
+          <div><label>Number</label><input name="num" placeholder="Series 06"/></div>
+          <div><label>Name *</label><input name="name" required placeholder="Bali"/></div>
+          <div><label>Year</label><input name="year" placeholder="2025"/></div>
+        </div>
+        <div style="height:12px"></div>
+        <label>Description</label>
+        <textarea name="description" placeholder="Short description shown on the series page."></textarea>
+        <div style="height:12px"></div>
+        <div class="row cols-2">
+          <div>
+            <label>Cover image (upload)</label>
+            <input type="file" name="cover" accept="image/*"/>
+          </div>
+          <div>
+            <label>or Cover URL</label>
+            <input name="cover_url" placeholder="https://res.cloudinary.com/.../cover.jpg"/>
+          </div>
+        </div>
+        <div style="height:14px"></div>
+        <button class="btn btn-primary" type="submit">Create series</button>
+      </form>
+    </section>
+
+    <!-- Series list -->
+    <section>
+      <h2>Series <span class="count" id="series-count"></span></h2>
+      <div id="series-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ── EDIT MODALS ── -->
+<div class="modal" id="modal-edit-series">
+  <form class="modal-card" id="form-edit-series">
+    <h3>Edit series</h3>
+    <input type="hidden" name="id"/>
+    <div class="row cols-3">
+      <div><label>Number</label><input name="num"/></div>
+      <div><label>Name *</label><input name="name" required/></div>
+      <div><label>Year</label><input name="year"/></div>
+    </div>
+    <div style="height:12px"></div>
+    <label>Description</label>
+    <textarea name="description"></textarea>
+    <div style="height:12px"></div>
+    <div class="row cols-2">
+      <div><label>Replace cover (upload)</label><input type="file" name="cover" accept="image/*"/></div>
+      <div><label>or Cover URL</label><input name="cover_url"/></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="modal" id="modal-edit-photo">
+  <form class="modal-card" id="form-edit-photo">
+    <h3>Edit photo</h3>
+    <input type="hidden" name="id"/>
+    <label>Title</label><input name="title"/>
+    <div style="height:10px"></div>
+    <div class="row cols-2">
+      <div><label>Camera</label><input name="cam"/></div>
+      <div><label>Lens</label><input name="lens"/></div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="row cols-3">
+      <div><label>ISO</label><input name="iso"/></div>
+      <div><label>Shutter</label><input name="ss"/></div>
+      <div><label>Aperture</label><input name="ap"/></div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="row cols-2">
+      <div><label>Replace image (upload)</label><input type="file" name="image" accept="image/*"/></div>
+      <div><label>or Image URL</label><input name="img"/></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────
+const state = {
+  token: localStorage.getItem('admin_token') || null,
+  series: [],
+  openSeriesId: null,
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────
+function $(sel, root){ return (root || document).querySelector(sel); }
+function $$(sel, root){ return Array.from((root || document).querySelectorAll(sel)); }
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let toastTimer;
+function toast(msg, type){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.className = 'toast'; }, 2800);
+}
+
+async function api(method, path, body, opts){
+  opts = opts || {};
+  const headers = {};
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  const init = { method, headers };
+  if (body instanceof FormData) {
+    init.body = body;
+  } else if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, init);
+  if (res.status === 401) {
+    logout(true);
+    throw new Error('Session expired');
+  }
+  let data = null;
+  const ctype = res.headers.get('content-type') || '';
+  if (ctype.includes('application/json')) {
+    data = await res.json().catch(()=>null);
+  }
+  if (!res.ok) {
+    throw new Error((data && data.error) || ('HTTP ' + res.status));
+  }
+  return data;
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────
+function showLogin(){
+  $('#view-login').style.display = 'flex';
+  $('#view-dash').style.display = 'none';
+}
+function showDash(){
+  $('#view-login').style.display = 'none';
+  $('#view-dash').style.display = 'block';
+  loadSeries();
+}
+function logout(silent){
+  state.token = null;
+  localStorage.removeItem('admin_token');
+  showLogin();
+  if (!silent) toast('Signed out');
+}
+
+$('#login-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  $('#li-err').textContent = '';
+  const fd = new FormData(e.target);
+  try {
+    const data = await fetch('/api/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }),
+    }).then(r => r.json().then(j => ({ ok: r.ok, j })));
+    if (!data.ok) throw new Error((data.j && data.j.error) || 'Login failed');
+    state.token = data.j.token;
+    localStorage.setItem('admin_token', state.token);
+    showDash();
+    toast('Welcome back', 'success');
+  } catch (err) {
+    $('#li-err').textContent = err.message;
+  }
+});
+
+$('#btn-logout').addEventListener('click', ()=>logout());
+
+// ─── Load + render series ────────────────────────────────────────────────
+async function loadSeries(){
+  try {
+    state.series = await api('GET', '/api/series');
+    renderSeries();
+  } catch (err) {
+    toast('Failed to load: ' + err.message, 'error');
+  }
+}
+
+function renderSeries(){
+  $('#series-count').textContent = state.series.length + ' total';
+  const list = $('#series-list');
+  if (!state.series.length) {
+    list.innerHTML = '<div class="empty">No series yet — create one above.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  state.series.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'series-card';
+    card.dataset.id = s.id;
+    if (state.openSeriesId === s.id) card.classList.add('open');
+    card.innerHTML = `
+      <div class="head">
+        <img class="cover-thumb" src="${escapeHtml(s.cover) || ''}" alt="" onerror="this.style.visibility='hidden'"/>
+        <div class="meta">
+          <div class="title">${escapeHtml(s.name)}</div>
+          <div class="sub">${escapeHtml(s.num)} · ${escapeHtml(s.year)} · ${s.photos.length} photos</div>
+        </div>
+        <span class="chev">▶</span>
+        <div class="actions" data-stop>
+          <button class="btn btn-ghost btn-sm" data-action="edit-series">Edit</button>
+          <button class="btn btn-danger btn-sm" data-action="delete-series">Delete</button>
+        </div>
+      </div>
+      <div class="body">
+        <div class="drop" data-drop>
+          <strong>Drop images here</strong> or <label style="color:var(--blue);cursor:pointer;display:inline">
+            browse<input type="file" multiple accept="image/*" data-upload/>
+          </label>
+          <div style="font-size:12px;margin-top:4px">JPG, PNG, WebP — up to ${(window.MAX_UPLOAD_MB || 25)} MB each</div>
+        </div>
+        <div class="photos"></div>
+      </div>
+    `;
+    list.appendChild(card);
+    renderPhotos(card, s);
+    bindCardEvents(card, s);
+  });
+}
+
+function renderPhotos(card, series){
+  const grid = $('.photos', card);
+  grid.innerHTML = '';
+  if (!series.photos.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No photos yet — upload above.</div>';
+    return;
+  }
+  series.photos.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'photo';
+    el.innerHTML = `
+      <img src="${escapeHtml(p.img)}" alt="${escapeHtml(p.title)}" loading="lazy" onerror="this.style.opacity=.3"/>
+      <div class="ph-actions">
+        <button class="ph-btn" data-action="edit-photo" data-id="${p.id}">Edit</button>
+        <button class="ph-btn del" data-action="delete-photo" data-id="${p.id}">×</button>
+      </div>
+      <div class="ph-info">
+        <div class="t">${escapeHtml(p.title || '(untitled)')}</div>
+        <div class="e">${escapeHtml([p.cam, p.lens, p.iso, p.ss, p.ap].filter(Boolean).join(' · ') || '—')}</div>
+      </div>`;
+    grid.appendChild(el);
+  });
+}
+
+function bindCardEvents(card, series){
+  $('.head', card).addEventListener('click', (e)=>{
+    if (e.target.closest('[data-stop]')) return;
+    const wasOpen = card.classList.contains('open');
+    state.openSeriesId = wasOpen ? null : series.id;
+    renderSeries();
+  });
+
+  $$('[data-action]', card).forEach(btn => {
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const act = btn.dataset.action;
+      if (act === 'edit-series') openEditSeries(series);
+      else if (act === 'delete-series') deleteSeries(series);
+      else if (act === 'edit-photo') {
+        const photo = series.photos.find(p => p.id == btn.dataset.id);
+        if (photo) openEditPhoto(series, photo);
+      } else if (act === 'delete-photo') {
+        const photo = series.photos.find(p => p.id == btn.dataset.id);
+        if (photo) deletePhoto(series, photo);
+      }
+    });
+  });
+
+  // Drop zone
+  const drop = $('[data-drop]', card);
+  const fileInput = $('[data-upload]', card);
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('hover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('hover'));
+  drop.addEventListener('drop', async e => {
+    e.preventDefault();
+    drop.classList.remove('hover');
+    if (e.dataTransfer.files.length) await uploadFiles(series, e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', async () => {
+    if (fileInput.files.length) await uploadFiles(series, fileInput.files);
+    fileInput.value = '';
+  });
+}
+
+// ─── Series CRUD ─────────────────────────────────────────────────────────
+$('#form-new-series').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    await api('POST', '/api/series', fd);
+    e.target.reset();
+    toast('Series created', 'success');
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+function openEditSeries(s){
+  const form = $('#form-edit-series');
+  form.id.value = s.id;
+  form.num.value = s.num || '';
+  form.name.value = s.name || '';
+  form.year.value = s.year || '';
+  form.description.value = s.desc || '';
+  form.cover_url.value = s.cover || '';
+  form.cover.value = '';
+  $('#modal-edit-series').classList.add('open');
+}
+
+$('#form-edit-series').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.target;
+  const id = form.id.value;
+  const fd = new FormData();
+  ['num','name','year','description'].forEach(k => fd.append(k, form[k].value));
+  if (form.cover.files[0]) {
+    fd.append('cover', form.cover.files[0]);
+  } else {
+    fd.append('cover_url', form.cover_url.value);
+  }
+  try {
+    await api('PUT', `/api/series/${id}`, fd);
+    $('#modal-edit-series').classList.remove('open');
+    toast('Series updated', 'success');
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+async function deleteSeries(s){
+  if (!confirm(`Delete series "${s.name}" and all ${s.photos.length} of its photos? This cannot be undone.`)) return;
+  try {
+    await api('DELETE', `/api/series/${s.id}`);
+    toast('Series deleted', 'success');
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ─── Photo CRUD ──────────────────────────────────────────────────────────
+async function uploadFiles(series, fileList){
+  const fd = new FormData();
+  Array.from(fileList).forEach(f => fd.append('photos', f));
+  try {
+    toast(`Uploading ${fileList.length} file${fileList.length === 1 ? '' : 's'}…`);
+    const res = await api('POST', `/api/series/${series.id}/photos`, fd);
+    toast(`Uploaded ${res.created.length} photo${res.created.length === 1 ? '' : 's'}`, 'success');
+    state.openSeriesId = series.id;
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+function openEditPhoto(series, p){
+  const form = $('#form-edit-photo');
+  form.dataset.seriesId = series.id;
+  form.id.value = p.id;
+  form.title.value = p.title || '';
+  form.cam.value = p.cam || '';
+  form.lens.value = p.lens || '';
+  form.iso.value = p.iso || '';
+  form.ss.value = p.ss || '';
+  form.ap.value = p.ap || '';
+  form.img.value = p.img || '';
+  form.image.value = '';
+  $('#modal-edit-photo').classList.add('open');
+}
+
+$('#form-edit-photo').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const form = e.target;
+  const id = form.id.value;
+  const fd = new FormData();
+  ['title','cam','lens','iso','ss','ap'].forEach(k => fd.append(k, form[k].value));
+  if (form.image.files[0]) {
+    fd.append('image', form.image.files[0]);
+  } else {
+    fd.append('img', form.img.value);
+  }
+  try {
+    await api('PUT', `/api/photos/${id}`, fd);
+    $('#modal-edit-photo').classList.remove('open');
+    toast('Photo updated', 'success');
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+});
+
+async function deletePhoto(series, p){
+  if (!confirm(`Delete photo "${p.title || 'untitled'}"?`)) return;
+  try {
+    await api('DELETE', `/api/photos/${p.id}`);
+    toast('Photo deleted', 'success');
+    state.openSeriesId = series.id;
+    loadSeries();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ─── Modal close ─────────────────────────────────────────────────────────
+$$('[data-close]').forEach(b => b.addEventListener('click', e => {
+  e.target.closest('.modal').classList.remove('open');
+}));
+$$('.modal').forEach(m => m.addEventListener('click', e => {
+  if (e.target === m) m.classList.remove('open');
+}));
+
+// ─── Boot ────────────────────────────────────────────────────────────────
+(async function boot(){
+  if (!state.token) return showLogin();
+  try {
+    await api('GET', '/api/auth/me');
+    showDash();
+  } catch {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
