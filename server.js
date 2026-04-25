@@ -102,26 +102,6 @@ if (storage.storageMode === 'local') {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────
-// Diagnostic: report which storage mode is active and which env vars the
-// process currently sees. Values are NEVER returned — only presence/length.
-app.get('/api/_debug/storage', (req, res) => {
-  const flag = (k) => {
-    const v = process.env[k];
-    return { present: typeof v === 'string' && v.length > 0, length: v ? v.length : 0 };
-  };
-  res.json({
-    storageMode: storage.storageMode,
-    env: {
-      CLOUDINARY_CLOUD_NAME: flag('CLOUDINARY_CLOUD_NAME'),
-      CLOUDINARY_API_KEY: flag('CLOUDINARY_API_KEY'),
-      CLOUDINARY_API_SECRET: flag('CLOUDINARY_API_SECRET'),
-      DATABASE_URL: flag('DATABASE_URL'),
-      JWT_SECRET: flag('JWT_SECRET'),
-      ADMIN_PASSWORD: flag('ADMIN_PASSWORD'),
-    },
-  });
-});
-
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
