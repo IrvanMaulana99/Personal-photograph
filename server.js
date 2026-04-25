@@ -1,7 +1,5 @@
 require('dotenv').config();
 const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
 
 const express = require('express');
 const cors = require('cors');
@@ -9,6 +7,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 
 const db = require('./db');
+const storage = require('./lib/storage');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-me';
@@ -17,26 +16,15 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB || '25', 10);
 
 if (!process.env.JWT_SECRET) {
-  console.warn('[warn] JWT_SECRET is not set — using insecure default. Set it in .env for production.');
+  console.warn('[warn] JWT_SECRET is not set — using insecure default. Set it in .env / Vercel env.');
 }
 if (!process.env.ADMIN_PASSWORD) {
-  console.warn('[warn] ADMIN_PASSWORD is not set — defaulting to "admin". Set it in .env for production.');
+  console.warn('[warn] ADMIN_PASSWORD is not set — defaulting to "admin". Set it in .env / Vercel env.');
 }
 
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-// ── Multer config ─────────────────────────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '') || '.jpg';
-    const id = crypto.randomBytes(8).toString('hex');
-    cb(null, `${Date.now()}-${id}${ext}`);
-  },
-});
+// ── Multer config: in-memory; storage helper decides where bytes go ──────
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (/^image\//.test(file.mimetype)) cb(null, true);
@@ -44,16 +32,13 @@ const upload = multer({
   },
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────
-function publicUrlForFile(filename) {
-  return `/uploads/${filename}`;
-}
-
-function deleteUploadedFile(urlOrPath) {
-  if (!urlOrPath || !urlOrPath.startsWith('/uploads/')) return;
-  const filename = path.basename(urlOrPath);
-  const fp = path.join(UPLOAD_DIR, filename);
-  fs.promises.unlink(fp).catch(() => {});
+async function persistFile(file) {
+  if (!file) return null;
+  return storage.uploadBuffer({
+    buffer: file.buffer,
+    originalName: file.originalname,
+    mimetype: file.mimetype,
+  });
 }
 
 function authMiddleware(req, res, next) {
@@ -68,11 +53,19 @@ function authMiddleware(req, res, next) {
   }
 }
 
-function getSeriesWithPhotos() {
-  const series = db.prepare(`SELECT * FROM series ORDER BY sort_order ASC, id ASC`).all();
-  const photoStmt = db.prepare(
-    `SELECT * FROM photos WHERE series_id = ? ORDER BY sort_order ASC, id ASC`
+async function getSeriesWithPhotos() {
+  const series = await db.query(
+    `SELECT * FROM series ORDER BY sort_order ASC, id ASC`
   );
+  if (series.length === 0) return [];
+  const ids = series.map((s) => s.id);
+  const photos = await db.query(
+    `SELECT * FROM photos WHERE series_id = ANY($1::int[])
+     ORDER BY series_id, sort_order ASC, id ASC`,
+    [ids]
+  );
+  const byId = new Map(series.map((s) => [s.id, []]));
+  for (const p of photos) byId.get(p.series_id)?.push(p);
   return series.map((s) => ({
     id: s.id,
     num: s.num || '',
@@ -81,7 +74,7 @@ function getSeriesWithPhotos() {
     cover: s.cover || '',
     desc: s.description || '',
     sort_order: s.sort_order,
-    photos: photoStmt.all(s.id).map((p) => ({
+    photos: (byId.get(s.id) || []).map((p) => ({
       id: p.id,
       title: p.title || '',
       img: p.img,
@@ -95,11 +88,18 @@ function getSeriesWithPhotos() {
   }));
 }
 
+// Helper: wrap async route handlers so unhandled rejections hit Express's error middleware.
+const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 // ── App ───────────────────────────────────────────────────────────────────
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
-app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '7d' }));
+
+// Local-disk fallback: still serve /uploads when no Cloudinary configured.
+if (storage.storageMode === 'local') {
+  app.use('/uploads', express.static(storage.UPLOAD_DIR, { maxAge: '7d' }));
+}
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 app.post('/api/auth/login', (req, res) => {
@@ -116,101 +116,126 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 });
 
 // ── Public: list series ───────────────────────────────────────────────────
-app.get('/api/series', (_req, res) => {
-  res.json(getSeriesWithPhotos());
-});
+app.get('/api/series', ah(async (_req, res) => {
+  res.json(await getSeriesWithPhotos());
+}));
 
 // ── Series CRUD ───────────────────────────────────────────────────────────
-app.post('/api/series', authMiddleware, upload.single('cover'), (req, res) => {
-  const { num, name, year, description } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
+app.post(
+  '/api/series',
+  authMiddleware,
+  upload.single('cover'),
+  ah(async (req, res) => {
+    const { num, name, year, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'name is required' });
 
-  let coverUrl = (req.body.cover_url || '').trim();
-  if (req.file) coverUrl = publicUrlForFile(req.file.filename);
+    let coverUrl = (req.body.cover_url || '').trim();
+    if (req.file) coverUrl = await persistFile(req.file);
 
-  const maxOrder = db.prepare(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM series`).get().m;
+    const maxOrder =
+      (await db.queryOne(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM series`)).m;
 
-  const result = db
-    .prepare(
+    const row = await db.queryOne(
       `INSERT INTO series (num, name, year, cover, description, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-    .run(num || '', name.trim(), year || '', coverUrl || '', description || '', maxOrder + 1);
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [num || '', name.trim(), year || '', coverUrl || '', description || '', maxOrder + 1]
+    );
 
-  res.status(201).json({ id: result.lastInsertRowid });
-});
+    res.status(201).json({ id: row.id });
+  })
+);
 
-app.put('/api/series/:id', authMiddleware, upload.single('cover'), (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const existing = db.prepare(`SELECT * FROM series WHERE id = ?`).get(id);
-  if (!existing) return res.status(404).json({ error: 'Series not found' });
+app.put(
+  '/api/series/:id',
+  authMiddleware,
+  upload.single('cover'),
+  ah(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const existing = await db.queryOne(`SELECT * FROM series WHERE id = $1`, [id]);
+    if (!existing) return res.status(404).json({ error: 'Series not found' });
 
-  const fields = ['num', 'name', 'year', 'description'];
-  const updates = {};
-  for (const f of fields) {
-    if (req.body[f] !== undefined) updates[f] = req.body[f];
-  }
-
-  let newCover = existing.cover;
-  if (req.file) {
-    if (existing.cover && existing.cover.startsWith('/uploads/')) deleteUploadedFile(existing.cover);
-    newCover = publicUrlForFile(req.file.filename);
-  } else if (req.body.cover_url !== undefined) {
-    if (existing.cover && existing.cover.startsWith('/uploads/') && existing.cover !== req.body.cover_url) {
-      deleteUploadedFile(existing.cover);
+    const updates = {};
+    for (const f of ['num', 'name', 'year', 'description']) {
+      if (req.body[f] !== undefined) updates[f] = req.body[f];
     }
-    newCover = req.body.cover_url;
-  }
 
-  db.prepare(
-    `UPDATE series SET
-       num         = COALESCE(@num, num),
-       name        = COALESCE(@name, name),
-       year        = COALESCE(@year, year),
-       description = COALESCE(@description, description),
-       cover       = @cover
-     WHERE id = @id`
-  ).run({ ...updates, cover: newCover, id });
+    let newCover = existing.cover;
+    if (req.file) {
+      const url = await persistFile(req.file);
+      if (existing.cover) await storage.deleteByUrl(existing.cover);
+      newCover = url;
+    } else if (req.body.cover_url !== undefined) {
+      if (existing.cover && existing.cover !== req.body.cover_url) {
+        await storage.deleteByUrl(existing.cover);
+      }
+      newCover = req.body.cover_url;
+    }
 
-  res.json({ ok: true });
-});
+    await db.query(
+      `UPDATE series SET
+         num         = COALESCE($1, num),
+         name        = COALESCE($2, name),
+         year        = COALESCE($3, year),
+         description = COALESCE($4, description),
+         cover       = $5
+       WHERE id = $6`,
+      [
+        updates.num ?? null,
+        updates.name ?? null,
+        updates.year ?? null,
+        updates.description ?? null,
+        newCover ?? '',
+        id,
+      ]
+    );
 
-app.delete('/api/series/:id', authMiddleware, (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const series = db.prepare(`SELECT * FROM series WHERE id = ?`).get(id);
-  if (!series) return res.status(404).json({ error: 'Series not found' });
+    res.json({ ok: true });
+  })
+);
 
-  const photos = db.prepare(`SELECT img FROM photos WHERE series_id = ?`).all(id);
-  db.prepare(`DELETE FROM series WHERE id = ?`).run(id); // cascades photos
+app.delete(
+  '/api/series/:id',
+  authMiddleware,
+  ah(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const series = await db.queryOne(`SELECT * FROM series WHERE id = $1`, [id]);
+    if (!series) return res.status(404).json({ error: 'Series not found' });
 
-  if (series.cover) deleteUploadedFile(series.cover);
-  for (const p of photos) deleteUploadedFile(p.img);
+    const photos = await db.query(`SELECT img FROM photos WHERE series_id = $1`, [id]);
+    await db.query(`DELETE FROM series WHERE id = $1`, [id]); // cascades photos
 
-  res.json({ ok: true });
-});
+    if (series.cover) await storage.deleteByUrl(series.cover);
+    await Promise.all(photos.map((p) => storage.deleteByUrl(p.img)));
 
-app.post('/api/series/reorder', authMiddleware, (req, res) => {
-  const { order } = req.body || {};
-  if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array of ids' });
-  const upd = db.prepare(`UPDATE series SET sort_order = ? WHERE id = ?`);
-  const tx = db.transaction((ids) => {
-    ids.forEach((id, i) => upd.run(i, id));
-  });
-  tx(order);
-  res.json({ ok: true });
-});
+    res.json({ ok: true });
+  })
+);
+
+app.post(
+  '/api/series/reorder',
+  authMiddleware,
+  ah(async (req, res) => {
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array of ids' });
+    await db.withTx(async (client) => {
+      for (let i = 0; i < order.length; i++) {
+        await client.query(`UPDATE series SET sort_order = $1 WHERE id = $2`, [i, order[i]]);
+      }
+    });
+    res.json({ ok: true });
+  })
+);
 
 // ── Photos CRUD ───────────────────────────────────────────────────────────
 app.post(
   '/api/series/:id/photos',
   authMiddleware,
   upload.array('photos', 50),
-  (req, res) => {
+  ah(async (req, res) => {
     const seriesId = parseInt(req.params.id, 10);
-    const series = db.prepare(`SELECT id FROM series WHERE id = ?`).get(seriesId);
+    const series = await db.queryOne(`SELECT id FROM series WHERE id = $1`, [seriesId]);
     if (!series) return res.status(404).json({ error: 'Series not found' });
 
-    // Accept either uploaded files OR a list of {img,title,cam,...} via JSON body.
     const files = req.files || [];
     let metas = [];
     if (req.body.meta) {
@@ -226,121 +251,155 @@ app.post(
       return res.status(400).json({ error: 'Provide at least one file or a "meta" array' });
     }
 
+    const fileUrls = await Promise.all(files.map((f) => persistFile(f)));
+
     const maxOrder =
-      db.prepare(`SELECT COALESCE(MAX(sort_order), -1) AS m FROM photos WHERE series_id = ?`).get(seriesId).m;
+      (await db.queryOne(
+        `SELECT COALESCE(MAX(sort_order), -1) AS m FROM photos WHERE series_id = $1`,
+        [seriesId]
+      )).m;
 
-    const insert = db.prepare(
-      `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
-       VALUES (@series_id, @title, @img, @cam, @lens, @iso, @ss, @ap, @sort_order)`
-    );
-
-    const rows = [];
-    const tx = db.transaction(() => {
+    const rows = await db.withTx(async (client) => {
+      const created = [];
       let order = maxOrder + 1;
 
-      // Files first; pair them with metas[i] when available.
-      files.forEach((file, i) => {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const meta = metas[i] || {};
-        const r = insert.run({
-          series_id: seriesId,
-          title: meta.title || file.originalname.replace(/\.[^.]+$/, ''),
-          img: publicUrlForFile(file.filename),
-          cam: meta.cam || '',
-          lens: meta.lens || '',
-          iso: meta.iso || '',
-          ss: meta.ss || '',
-          ap: meta.ap || '',
-          sort_order: order++,
-        });
-        rows.push({ id: r.lastInsertRowid });
-      });
+        const r = await client.query(
+          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          [
+            seriesId,
+            meta.title || file.originalname.replace(/\.[^.]+$/, ''),
+            fileUrls[i],
+            meta.cam || '',
+            meta.lens || '',
+            meta.iso || '',
+            meta.ss || '',
+            meta.ap || '',
+            order++,
+          ]
+        );
+        created.push({ id: r.rows[0].id });
+      }
 
-      // Then any URL-only metas (without an attached file).
       for (let i = files.length; i < metas.length; i++) {
         const m = metas[i];
         if (!m || !m.img) continue;
-        const r = insert.run({
-          series_id: seriesId,
-          title: m.title || '',
-          img: m.img,
-          cam: m.cam || '',
-          lens: m.lens || '',
-          iso: m.iso || '',
-          ss: m.ss || '',
-          ap: m.ap || '',
-          sort_order: order++,
-        });
-        rows.push({ id: r.lastInsertRowid });
+        const r = await client.query(
+          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          [
+            seriesId,
+            m.title || '',
+            m.img,
+            m.cam || '',
+            m.lens || '',
+            m.iso || '',
+            m.ss || '',
+            m.ap || '',
+            order++,
+          ]
+        );
+        created.push({ id: r.rows[0].id });
       }
+      return created;
     });
-    tx();
 
     res.status(201).json({ created: rows });
-  }
+  })
 );
 
-app.put('/api/photos/:id', authMiddleware, upload.single('image'), (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const existing = db.prepare(`SELECT * FROM photos WHERE id = ?`).get(id);
-  if (!existing) return res.status(404).json({ error: 'Photo not found' });
+app.put(
+  '/api/photos/:id',
+  authMiddleware,
+  upload.single('image'),
+  ah(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const existing = await db.queryOne(`SELECT * FROM photos WHERE id = $1`, [id]);
+    if (!existing) return res.status(404).json({ error: 'Photo not found' });
 
-  const fields = ['title', 'cam', 'lens', 'iso', 'ss', 'ap'];
-  const patch = {};
-  for (const f of fields) {
-    if (req.body[f] !== undefined) patch[f] = req.body[f];
-  }
-
-  let newImg = existing.img;
-  if (req.file) {
-    if (existing.img && existing.img.startsWith('/uploads/')) deleteUploadedFile(existing.img);
-    newImg = publicUrlForFile(req.file.filename);
-  } else if (req.body.img !== undefined) {
-    if (existing.img && existing.img.startsWith('/uploads/') && existing.img !== req.body.img) {
-      deleteUploadedFile(existing.img);
+    const patch = {};
+    for (const f of ['title', 'cam', 'lens', 'iso', 'ss', 'ap']) {
+      if (req.body[f] !== undefined) patch[f] = req.body[f];
     }
-    newImg = req.body.img;
-  }
 
-  db.prepare(
-    `UPDATE photos SET
-       title = COALESCE(@title, title),
-       cam   = COALESCE(@cam, cam),
-       lens  = COALESCE(@lens, lens),
-       iso   = COALESCE(@iso, iso),
-       ss    = COALESCE(@ss, ss),
-       ap    = COALESCE(@ap, ap),
-       img   = @img
-     WHERE id = @id`
-  ).run({ ...patch, img: newImg, id });
+    let newImg = existing.img;
+    if (req.file) {
+      const url = await persistFile(req.file);
+      if (existing.img) await storage.deleteByUrl(existing.img);
+      newImg = url;
+    } else if (req.body.img !== undefined) {
+      if (existing.img && existing.img !== req.body.img) {
+        await storage.deleteByUrl(existing.img);
+      }
+      newImg = req.body.img;
+    }
 
-  res.json({ ok: true });
-});
+    await db.query(
+      `UPDATE photos SET
+         title = COALESCE($1, title),
+         cam   = COALESCE($2, cam),
+         lens  = COALESCE($3, lens),
+         iso   = COALESCE($4, iso),
+         ss    = COALESCE($5, ss),
+         ap    = COALESCE($6, ap),
+         img   = $7
+       WHERE id = $8`,
+      [
+        patch.title ?? null,
+        patch.cam ?? null,
+        patch.lens ?? null,
+        patch.iso ?? null,
+        patch.ss ?? null,
+        patch.ap ?? null,
+        newImg ?? '',
+        id,
+      ]
+    );
 
-app.delete('/api/photos/:id', authMiddleware, (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const photo = db.prepare(`SELECT img FROM photos WHERE id = ?`).get(id);
-  if (!photo) return res.status(404).json({ error: 'Photo not found' });
-  db.prepare(`DELETE FROM photos WHERE id = ?`).run(id);
-  if (photo.img) deleteUploadedFile(photo.img);
-  res.json({ ok: true });
-});
+    res.json({ ok: true });
+  })
+);
 
-app.post('/api/series/:id/photos/reorder', authMiddleware, (req, res) => {
-  const seriesId = parseInt(req.params.id, 10);
-  const { order } = req.body || {};
-  if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array of ids' });
-  const upd = db.prepare(`UPDATE photos SET sort_order = ? WHERE id = ? AND series_id = ?`);
-  const tx = db.transaction((ids) => {
-    ids.forEach((id, i) => upd.run(i, id, seriesId));
-  });
-  tx(order);
-  res.json({ ok: true });
-});
+app.delete(
+  '/api/photos/:id',
+  authMiddleware,
+  ah(async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const photo = await db.queryOne(`SELECT img FROM photos WHERE id = $1`, [id]);
+    if (!photo) return res.status(404).json({ error: 'Photo not found' });
+    await db.query(`DELETE FROM photos WHERE id = $1`, [id]);
+    if (photo.img) await storage.deleteByUrl(photo.img);
+    res.json({ ok: true });
+  })
+);
+
+app.post(
+  '/api/series/:id/photos/reorder',
+  authMiddleware,
+  ah(async (req, res) => {
+    const seriesId = parseInt(req.params.id, 10);
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) return res.status(400).json({ error: 'order must be an array of ids' });
+    await db.withTx(async (client) => {
+      for (let i = 0; i < order.length; i++) {
+        await client.query(
+          `UPDATE photos SET sort_order = $1 WHERE id = $2 AND series_id = $3`,
+          [i, order[i], seriesId]
+        );
+      }
+    });
+    res.json({ ok: true });
+  })
+);
 
 // ── Static frontend ───────────────────────────────────────────────────────
-app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.get('/admin/', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.use(express.static(__dirname, { index: 'index.html', extensions: ['html'] }));
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.get('/admin', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.get('/admin/', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
 // ── Error handler (multer + others) ───────────────────────────────────────
 app.use((err, _req, res, _next) => {
@@ -351,7 +410,12 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`[ready] gallery on http://localhost:${PORT}`);
-  console.log(`[ready] admin   on http://localhost:${PORT}/admin`);
-});
+module.exports = app;
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[ready] gallery on http://localhost:${PORT}`);
+    console.log(`[ready] admin   on http://localhost:${PORT}/admin`);
+    console.log(`[ready] storage: ${storage.storageMode}`);
+  });
+}

@@ -1,4 +1,4 @@
-/* Seed the SQLite DB with the original SERIES data from index.html.
+/* Seed the Postgres DB with the original SERIES data from index.html.
    Idempotent: skips seeding if the DB already has any series.
    Force re-seed:  node seed.js --force                                       */
 
@@ -6,6 +6,13 @@ require('dotenv').config();
 const db = require('./db');
 
 const FORCE = process.argv.includes('--force');
+
+main().catch((err) => {
+  console.error('[seed] failed:', err);
+  process.exit(1);
+});
+
+async function main() {
 
 const CLOUD = process.env.CLOUDINARY_CLOUD_NAME || 'YOUR_CLOUD_NAME';
 const T = 'q_auto,f_auto';
@@ -149,45 +156,42 @@ const SERIES = [
   },
 ];
 
-const existing = db.prepare(`SELECT COUNT(*) AS n FROM series`).get().n;
+await db.ensureSchema();
+
+const existing = (await db.queryOne(`SELECT COUNT(*)::int AS n FROM series`)).n;
 if (existing > 0 && !FORCE) {
   console.log(`[seed] DB already has ${existing} series — skipping. Use --force to wipe and re-seed.`);
-  process.exit(0);
+  await db.pool.end();
+  return;
 }
 
 if (FORCE) {
-  db.exec(`DELETE FROM photos; DELETE FROM series;`);
+  await db.query(`TRUNCATE TABLE photos, series RESTART IDENTITY CASCADE`);
   console.log('[seed] cleared existing data');
 }
 
-const insertSeries = db.prepare(
-  `INSERT INTO series (num, name, year, cover, description, sort_order)
-   VALUES (?, ?, ?, ?, ?, ?)`
-);
-const insertPhoto = db.prepare(
-  `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
-   VALUES (@series_id, @title, @img, @cam, @lens, @iso, @ss, @ap, @sort_order)`
-);
-
-const tx = db.transaction(() => {
-  SERIES.forEach((s, si) => {
-    const r = insertSeries.run(s.num, s.name, s.year, s.cover, s.desc, si);
-    s.photos.forEach((p, pi) => {
-      insertPhoto.run({
-        series_id: r.lastInsertRowid,
-        title: p.title,
-        img: p.img,
-        cam: p.cam,
-        lens: p.lens,
-        iso: p.iso,
-        ss: p.ss,
-        ap: p.ap,
-        sort_order: pi,
-      });
-    });
-  });
+await db.withTx(async (client) => {
+  for (let si = 0; si < SERIES.length; si++) {
+    const s = SERIES[si];
+    const r = await client.query(
+      `INSERT INTO series (num, name, year, cover, description, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [s.num, s.name, s.year, s.cover, s.desc, si]
+    );
+    const seriesId = r.rows[0].id;
+    for (let pi = 0; pi < s.photos.length; pi++) {
+      const p = s.photos[pi];
+      await client.query(
+        `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [seriesId, p.title, p.img, p.cam, p.lens, p.iso, p.ss, p.ap, pi]
+      );
+    }
+  }
 });
-tx();
 
-const total = db.prepare(`SELECT COUNT(*) AS n FROM photos`).get().n;
+const total = (await db.queryOne(`SELECT COUNT(*)::int AS n FROM photos`)).n;
 console.log(`[seed] inserted ${SERIES.length} series and ${total} photos.`);
+await db.pool.end();
+}
+
