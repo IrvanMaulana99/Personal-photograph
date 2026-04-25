@@ -396,9 +396,10 @@ app.post(
 );
 
 // ── Static frontend ───────────────────────────────────────────────────────
-app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.get('/admin/', (_req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
-app.use(express.static(__dirname, { index: 'index.html', extensions: ['html'] }));
+const PUBLIC_DIR = path.join(__dirname, 'public');
+app.get('/admin', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.get('/admin/', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.use(express.static(PUBLIC_DIR, { index: 'index.html', extensions: ['html'] }));
 
 // ── Error handler (multer + others) ───────────────────────────────────────
 app.use((err, _req, res, _next) => {
