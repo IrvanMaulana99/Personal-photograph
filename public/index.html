@@ -18,9 +18,11 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* ── TOKENS ── */
+/* INFJ sage green accent on a clean modern white surface. */
 :root{
-  --w:#fff;--off:#f5f5f3;--blue:#1a6bff;--blue-lt:#e8f1ff;
-  --ink:#0e0e0e;--muted:#8a8a8a;--bd:#e4e4e0;
+  --w:#fff;--off:#f5f7f4;
+  --accent:#5b8e7d;--accent-lt:#e8f2ee;--accent-dk:#3f6d5e;
+  --ink:#0e0e0e;--muted:#8a8a8a;--bd:#e4e6e2;
   --serif:'Playfair Display',Georgia,serif;
   --sans:'Inter',system-ui,sans-serif;
   --ease:cubic-bezier(.25,.46,.45,.94);
@@ -48,14 +50,14 @@ header{
   letter-spacing:.01em;color:var(--ink);
   cursor:pointer;user-select:none;text-decoration:none;
 }
-.logo em{font-style:italic;color:var(--blue)}
+.logo em{font-style:italic;color:var(--accent)}
 
 .nav-crumb{
   display:none;align-items:center;gap:8px;
   font-size:12px;font-weight:300;color:var(--muted);
 }
 .crumb-home{cursor:pointer;transition:color .18s}
-.crumb-home:hover{color:var(--blue)}
+.crumb-home:hover{color:var(--accent)}
 .crumb-sep{opacity:.3}
 .crumb-cur{color:var(--ink);font-family:var(--serif);font-size:15px;font-style:italic}
 
@@ -66,7 +68,7 @@ header{
   font-size:12px;font-weight:300;color:var(--muted);cursor:pointer;
   transition:color .18s,border-color .18s,background .18s;
 }
-.btn-back:hover{color:var(--blue);border-color:var(--blue);background:var(--blue-lt)}
+.btn-back:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-lt)}
 .btn-back svg{width:10px;height:10px}
 
 /* ── VIEWS ── */
@@ -76,20 +78,22 @@ header{
 /* ── HERO ── */
 .hero{
   position:relative;overflow:hidden;padding:76px 52px 60px;
-  background-image:radial-gradient(circle,#d8d8d4 1px,transparent 1px);
+  background-image:radial-gradient(circle,#d8dcd6 1px,transparent 1px);
   background-size:28px 28px;
 }
 .hero-fade{
   position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(135deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.84) 58%,rgba(230,240,255,.55) 100%);
+  background:linear-gradient(135deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.84) 58%,rgba(232,242,238,.62) 100%);
 }
 .hero-content{position:relative;z-index:1;animation:fadeUp .6s var(--ease) both}
 
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:8px;
-  font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);
-  background:var(--blue-lt);border-radius:999px;padding:5px 14px;margin-bottom:24px;
+  font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-dk);
+  background:var(--accent-lt);border-radius:999px;padding:5px 14px;margin-bottom:24px;
+  transition:transform .25s var(--ease);
 }
+.hero-eyebrow:hover{transform:translateY(-1px)}
 .hero-eyebrow svg{width:11px;height:11px;flex-shrink:0}
 .hero h1{
   font-family:var(--serif);font-size:clamp(38px,5.5vw,68px);
@@ -112,7 +116,7 @@ header{
   font-size:10px;font-weight:400;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
   white-space:nowrap;display:flex;align-items:center;gap:6px;
 }
-.sl-text svg{width:11px;height:11px;color:var(--blue)}
+.sl-text svg{width:11px;height:11px;color:var(--accent)}
 
 /* ── SERIES LIST ── */
 .series-list{
@@ -140,13 +144,18 @@ header{
 }
 .series-card::after{
   content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
-  background:var(--blue);transform:scaleX(0);transform-origin:left;
+  background:var(--accent);transform:scaleX(0);transform-origin:left;
   transition:transform .3s var(--ease);
 }
 .series-card:hover::after{transform:scaleX(1)}
+.series-card:nth-child(4){animation-delay:.21s}
+.series-card:nth-child(5){animation-delay:.28s}
+.series-card:nth-child(6){animation-delay:.35s}
+.series-card:nth-child(7){animation-delay:.42s}
+.series-card:nth-child(n+8){animation-delay:.5s}
 
 .card-info{position:absolute;bottom:0;left:0;right:0;padding:26px 26px 30px}
-.card-num{font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
+.card-num{font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:#a3d6c4;margin-bottom:6px}
 .card-title{font-family:var(--serif);font-size:27px;font-weight:400;color:#fff;line-height:1.05}
 .card-sub{
   margin-top:10px;font-size:11px;font-weight:300;
@@ -159,7 +168,8 @@ header{
   display:flex;align-items:center;justify-content:center;
   transition:background .22s,border-color .22s;
 }
-.series-card:hover .card-arrow{background:var(--blue);border-color:var(--blue)}
+.series-card:hover .card-arrow{background:var(--accent);border-color:var(--accent);transform:rotate(0deg)}
+.card-arrow{transition:background .22s,border-color .22s,transform .25s var(--ease)}
 .card-arrow svg{width:11px;height:11px}
 
 /* ── ABOUT ── */
@@ -169,8 +179,8 @@ header{
 }
 .about-left{display:flex;gap:20px;align-items:flex-start;max-width:520px}
 .about-avatar{
-  width:46px;height:46px;border-radius:50%;background:var(--blue-lt);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--blue);
+  width:46px;height:46px;border-radius:50%;background:var(--accent-lt);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-dk);
 }
 .about-avatar svg{width:20px;height:20px}
 .about-name{font-family:var(--serif);font-size:18px;font-weight:400;color:var(--ink);margin-bottom:6px}
@@ -182,7 +192,8 @@ header{
   color:var(--muted);cursor:pointer;text-decoration:none;
   transition:color .18s,border-color .18s,background .18s;
 }
-.social-btn:hover{color:var(--blue);border-color:var(--blue);background:var(--blue-lt)}
+.social-btn{transition:color .18s,border-color .18s,background .18s,transform .2s var(--ease)}
+.social-btn:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-lt);transform:translateY(-2px)}
 .social-btn svg{width:14px;height:14px}
 
 /* ── FOOTER ── */
@@ -192,21 +203,21 @@ footer{
 }
 .footer-left{font-family:var(--serif);font-size:15px;font-style:italic;font-weight:400;color:var(--muted)}
 .footer-right{font-size:11px;font-weight:300;color:var(--muted);letter-spacing:.04em}
-.footer-right a{color:var(--blue);text-decoration:none}
+.footer-right a{color:var(--accent);text-decoration:none}
 
 /* ── SERIES VIEW HEADER ── */
 .sv-header{
   position:relative;overflow:hidden;padding:56px 52px 42px;
   border-bottom:1px solid var(--bd);
-  background-image:radial-gradient(circle,#d8d8d4 1px,transparent 1px);
+  background-image:radial-gradient(circle,#d8dcd6 1px,transparent 1px);
   background-size:28px 28px;
 }
 .sv-fade{
   position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.88) 65%,rgba(230,240,255,.45) 100%);
+  background:linear-gradient(90deg,rgba(255,255,255,.97) 0%,rgba(255,255,255,.88) 65%,rgba(232,242,238,.55) 100%);
 }
 .sv-content{position:relative;z-index:1;animation:fadeUp .4s var(--ease) both}
-.sv-eyebrow{font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
+.sv-eyebrow{font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-dk);margin-bottom:12px}
 .sv-title{font-family:var(--serif);font-size:clamp(34px,4.5vw,54px);font-weight:400;color:var(--ink);margin-bottom:10px}
 .sv-desc{font-size:13px;font-weight:300;color:var(--muted);max-width:400px;line-height:1.9}
 
@@ -225,6 +236,7 @@ footer{
   break-inside:avoid;
   margin-bottom:3px;
   display:block;
+  animation:fadeUp .42s var(--ease) both;
 }
 .photo-ph{
   display:block;
@@ -269,6 +281,7 @@ footer{
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .28s ease;
   padding:24px;
+  backdrop-filter:blur(2px);
 }
 .lb.open{opacity:1;pointer-events:all}
 
@@ -278,7 +291,10 @@ footer{
   box-shadow:0 32px 96px rgba(0,0,0,.32);
   display:flex;flex-direction:column;
   max-height:92vh;overflow-y:auto;overflow-x:hidden;
+  transform:translateY(8px) scale(.98);opacity:0;
+  transition:transform .32s var(--ease),opacity .32s var(--ease);
 }
+.lb.open .lb-inner{transform:none;opacity:1}
 .lb-close{
   position:absolute;top:12px;right:12px;z-index:10;
   width:30px;height:30px;border-radius:50%;
@@ -335,7 +351,7 @@ footer{
   color:var(--muted);padding:4px;border-radius:50%;
   transition:color .18s,background .18s;flex-shrink:0;
 }
-.lb-nav:hover{color:var(--blue);background:var(--blue-lt)}
+.lb-nav:hover{color:var(--accent);background:var(--accent-lt)}
 .lb-nav svg{width:14px;height:14px}
 
 /* ── SCROLL REVEAL ── */
@@ -504,6 +520,27 @@ function escapeHtml(str){
   return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* Format the date shown in the lightbox.
+   - If a real `taken_at` ISO string is present, render as "DD MON YYYY  HH:MMAM/PM" in user-local time.
+   - Otherwise fall back to the existing "01 JAN <year> 12:00PM" placeholder so legacy series still look consistent. */
+const MONTHS_SHORT = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function formatPhotoDate(iso, fallbackYear){
+  if (iso) {
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2,'0');
+      const mon = MONTHS_SHORT[d.getMonth()];
+      const yr  = d.getFullYear();
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2,'0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12; if (h === 0) h = 12;
+      return `${day} ${mon} ${yr}\u00a0\u00a0${h}:${m}${ampm}`;
+    }
+  }
+  return `01 JAN ${fallbackYear}\u00a0\u00a012:00PM`;
+}
+
 function renderHome(){
   const totalPhotos = SERIES.reduce((a,s)=>a + (s.photos?.length || 0), 0);
   document.getElementById('stat-series').textContent = SERIES.length;
@@ -642,7 +679,7 @@ function lbRender(){
     `<div class="lb-cols">` +
       `<div class="lb-col-left">` +
         `<div class="lb-meta-row">${IC.cam}<span class="lb-meta-text">${p.cam}</span></div>` +
-        `<div class="lb-meta-row">${IC.img}<span class="lb-meta-text" style="color:var(--blue)">${s.num} — ${s.name}</span></div>` +
+        `<div class="lb-meta-row">${IC.img}<span class="lb-meta-text" style="color:var(--accent-dk)">${s.num} — ${s.name}</span></div>` +
       `</div>` +
       `<div class="lb-col-right">` +
         `<div class="lb-focal-row"><span class="lb-focal-main">${focalMain}</span><span class="lb-focal-eq">${focalRest.join(' ')}</span></div>` +
@@ -653,7 +690,7 @@ function lbRender(){
     `</div>` +
     `<div class="lb-date-row">` +
       `<span class="lb-photographer">irvanphotograph.vercel.app</span>` +
-      `<span class="lb-date">01 JAN ${s.year}&nbsp;&nbsp;12:00PM</span>` +
+      `<span class="lb-date">${formatPhotoDate(p.taken_at, s.year)}</span>` +
     `</div>` +
     `<div class="lb-counter">` +
       `<button class="lb-nav" onclick="lbNav(-1)">${IC.arr_l}</button>` +

@@ -32,6 +32,16 @@ const upload = multer({
   },
 });
 
+// Parse a taken_at value from form data. Accept ISO-8601 strings and
+// HTML5 datetime-local format (YYYY-MM-DDTHH:MM). Returns Date or null.
+function parseTakenAt(value) {
+  if (value === undefined || value === null) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 async function persistFile(file) {
   if (!file) return null;
   return storage.uploadBuffer({
@@ -83,6 +93,7 @@ async function getSeriesWithPhotos() {
       iso: p.iso || '',
       ss: p.ss || '',
       ap: p.ap || '',
+      taken_at: p.taken_at ? p.taken_at.toISOString() : null,
       sort_order: p.sort_order,
     })),
   }));
@@ -267,8 +278,8 @@ app.post(
         const file = files[i];
         const meta = metas[i] || {};
         const r = await client.query(
-          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, taken_at, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
           [
             seriesId,
             meta.title || file.originalname.replace(/\.[^.]+$/, ''),
@@ -278,6 +289,7 @@ app.post(
             meta.iso || '',
             meta.ss || '',
             meta.ap || '',
+            parseTakenAt(meta.taken_at),
             order++,
           ]
         );
@@ -288,8 +300,8 @@ app.post(
         const m = metas[i];
         if (!m || !m.img) continue;
         const r = await client.query(
-          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+          `INSERT INTO photos (series_id, title, img, cam, lens, iso, ss, ap, taken_at, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
           [
             seriesId,
             m.title || '',
@@ -299,6 +311,7 @@ app.post(
             m.iso || '',
             m.ss || '',
             m.ap || '',
+            parseTakenAt(m.taken_at),
             order++,
           ]
         );
@@ -324,6 +337,10 @@ app.put(
     for (const f of ['title', 'cam', 'lens', 'iso', 'ss', 'ap']) {
       if (req.body[f] !== undefined) patch[f] = req.body[f];
     }
+    let takenAtPatch;
+    if (req.body.taken_at !== undefined) {
+      takenAtPatch = parseTakenAt(req.body.taken_at);
+    }
 
     let newImg = existing.img;
     if (req.file) {
@@ -339,14 +356,15 @@ app.put(
 
     await db.query(
       `UPDATE photos SET
-         title = COALESCE($1, title),
-         cam   = COALESCE($2, cam),
-         lens  = COALESCE($3, lens),
-         iso   = COALESCE($4, iso),
-         ss    = COALESCE($5, ss),
-         ap    = COALESCE($6, ap),
-         img   = $7
-       WHERE id = $8`,
+         title    = COALESCE($1, title),
+         cam      = COALESCE($2, cam),
+         lens     = COALESCE($3, lens),
+         iso      = COALESCE($4, iso),
+         ss       = COALESCE($5, ss),
+         ap       = COALESCE($6, ap),
+         img      = $7,
+         taken_at = CASE WHEN $9::boolean THEN $8 ELSE taken_at END
+       WHERE id = $10`,
       [
         patch.title ?? null,
         patch.cam ?? null,
@@ -355,6 +373,8 @@ app.put(
         patch.ss ?? null,
         patch.ap ?? null,
         newImg ?? '',
+        takenAtPatch ?? null,
+        req.body.taken_at !== undefined,
         id,
       ]
     );

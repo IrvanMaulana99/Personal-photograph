@@ -7,10 +7,13 @@ if (!connectionString) {
 
 // Neon (and most managed Postgres providers) require SSL but use cert chains
 // that Node.js does not validate by default. Disable strict cert validation
-// here — the connection itself is still encrypted.
+// here — the connection itself is still encrypted. Local Postgres (e.g. a
+// docker container at localhost) generally doesn't speak SSL, so skip it
+// when the URL points at localhost.
+const isLocal = /\/\/[^/]*?(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString);
 const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false },
+  ssl: isLocal ? false : { rejectUnauthorized: false },
   max: parseInt(process.env.PGPOOL_MAX || '5', 10),
 });
 
@@ -39,6 +42,10 @@ CREATE TABLE IF NOT EXISTS photos (
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- taken_at: when the photo was actually shot (vs. created_at = upload time).
+-- Optional; NULL means "use series year fallback in the UI".
+ALTER TABLE photos ADD COLUMN IF NOT EXISTS taken_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_photos_series ON photos(series_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_series_order  ON series(sort_order);
