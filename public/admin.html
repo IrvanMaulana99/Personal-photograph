@@ -12,7 +12,7 @@
     --w:#fafaf8;--off:#f0efeb;
     --accent:#40916c;--accent-lt:#edf7f1;--accent-dk:#2d6a4f;
     --accent-soft:#d8f3dc;--accent-bright:#74c69d;
-    --ink:#141917;--muted:#7a9484;--bd:#d8e5dc;
+    --ink:#141917;--ink-soft:#2e3830;--muted:#5d7869;--bd:#cfdcd3;
     --red:#dc2626;--red-lt:#fef2f2;--green:#059669;
     --serif:'Cormorant Garamond',Georgia,serif;
     --sans:'DM Sans',system-ui,sans-serif;
@@ -21,7 +21,7 @@
   }
   body{
     background:var(--off);color:var(--ink);
-    font-family:var(--sans);font-weight:400;font-size:14px;line-height:1.55;
+    font-family:var(--sans);font-weight:500;font-size:14.5px;line-height:1.6;
     -webkit-font-smoothing:antialiased;min-height:100vh;
     position:relative;
   }
@@ -47,7 +47,7 @@
   }
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-lt)}
   textarea{resize:vertical;min-height:70px}
-  label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;letter-spacing:.01em}
   .row{display:grid;gap:12px}
   .row.cols-2{grid-template-columns:1fr 1fr}
   .row.cols-3{grid-template-columns:1fr 1fr 1fr}
@@ -65,7 +65,7 @@
   }
   .logo{font-family:var(--serif);font-style:italic;font-size:18px}
   .logo em{color:var(--accent)}
-  .header-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted)}
+  .header-right{display:flex;align-items:center;gap:14px;font-size:13px;font-weight:500;color:var(--ink-soft)}
   .header-right a{font-size:13px}
 
   /* ── BUTTONS ── */
@@ -92,11 +92,11 @@
     padding:22px;margin-bottom:18px;
   }
   section h2{
-    font-family:var(--serif);font-size:22px;font-weight:400;
+    font-family:var(--serif);font-size:23px;font-weight:500;
     margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;
   }
   section h2 .count{
-    font-family:var(--sans);font-size:11px;color:var(--muted);
+    font-family:var(--sans);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.04em;
     letter-spacing:.15em;text-transform:uppercase;
   }
   hr{border:none;border-top:1px solid var(--bd);margin:18px 0}
@@ -116,9 +116,9 @@
     animation:fadeUp .42s var(--ease) both;
   }
   .login-card h1{
-    font-family:var(--serif);font-size:26px;font-weight:400;margin-bottom:6px;
+    font-family:var(--serif);font-size:28px;font-weight:500;margin-bottom:6px;
   }
-  .login-card .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .login-card .sub{color:var(--ink-soft);font-size:13.5px;font-weight:500;margin-bottom:22px}
 
   /* ── SERIES LIST ── */
   .series-card{
@@ -134,7 +134,7 @@
   }
   .series-card .meta{flex:1;min-width:0}
   .series-card .meta .title{font-weight:500;font-size:15px}
-  .series-card .meta .sub{font-size:12px;color:var(--muted)}
+  .series-card .meta .sub{font-size:12px;font-weight:500;color:var(--muted)}
   .series-card .actions{display:flex;gap:6px;flex-wrap:wrap}
   .series-card .body{
     margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:none;
@@ -261,7 +261,7 @@
   }
   .modal.open .modal-card{transform:translateY(0) scale(1)}
   .modal-card h3{
-    font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:14px;
+    font-family:var(--serif);font-size:21px;font-weight:500;margin-bottom:14px;
   }
   .modal-actions{
     display:flex;gap:8px;justify-content:flex-end;margin-top:18px;
@@ -396,7 +396,7 @@
       <div><label>Aperture</label><input name="ap"/></div>
     </div>
     <div style="height:10px"></div>
-    <label>Date taken <span style="color:var(--muted);font-weight:300">(optional — falls back to series year)</span></label>
+    <label>Date taken <span style="color:var(--muted);font-weight:500">(optional — falls back to series year)</span></label>
     <input name="taken_at" type="datetime-local" step="60"/>
     <div style="height:10px"></div>
     <div class="row cols-2">
