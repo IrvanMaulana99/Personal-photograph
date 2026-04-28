@@ -4,22 +4,40 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin · Photography Gallery</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  /* Sage palette + warm off-white surface, ported from the personality site. */
   :root{
-    --w:#fff;--off:#f5f5f3;--blue:#1a6bff;--blue-lt:#e8f1ff;--blue-dk:#0d4fd1;
-    --ink:#0e0e0e;--muted:#8a8a8a;--bd:#e4e4e0;
+    --w:#fafaf8;--off:#f0efeb;
+    --accent:#40916c;--accent-lt:#edf7f1;--accent-dk:#2d6a4f;
+    --accent-soft:#d8f3dc;--accent-bright:#74c69d;
+    --ink:#141917;--muted:#7a9484;--bd:#d8e5dc;
     --red:#dc2626;--red-lt:#fef2f2;--green:#059669;
-    --serif:'Playfair Display',Georgia,serif;
-    --sans:'Inter',system-ui,sans-serif;
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --sans:'DM Sans',system-ui,sans-serif;
+    --ease:cubic-bezier(.25,.46,.45,.94);
+    --card-shadow:0 2px 16px rgba(45,106,79,.06);
   }
   body{
     background:var(--off);color:var(--ink);
     font-family:var(--sans);font-weight:400;font-size:14px;line-height:1.55;
     -webkit-font-smoothing:antialiased;min-height:100vh;
+    position:relative;
   }
-  a{color:var(--blue);text-decoration:none}
+  /* Subtle film-grain so warm off-white isn't flat. */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.28;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+  body::after{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(circle 380px at 92% 8%,rgba(116,198,157,.10) 0%,transparent 70%),
+      radial-gradient(circle 280px at 4% 88%,rgba(45,106,79,.06) 0%,transparent 70%);
+  }
+  body>*{position:relative;z-index:1}
+  a{color:var(--accent);text-decoration:none}
   a:hover{text-decoration:underline}
   button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   input,textarea,select{
@@ -27,7 +45,7 @@
     background:var(--w);border:1px solid var(--bd);border-radius:6px;
     transition:border-color .15s;
   }
-  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--blue)}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-lt)}
   textarea{resize:vertical;min-height:70px}
   label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px}
   .row{display:grid;gap:12px}
@@ -46,7 +64,7 @@
     padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
   }
   .logo{font-family:var(--serif);font-style:italic;font-size:18px}
-  .logo em{color:var(--blue)}
+  .logo em{color:var(--accent)}
   .header-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted)}
   .header-right a{font-size:13px}
 
@@ -57,10 +75,11 @@
     transition:background .15s,color .15s,border-color .15s;
     border:1px solid transparent;
   }
-  .btn-primary{background:var(--blue);color:#fff}
-  .btn-primary:hover{background:var(--blue-dk)}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(63,109,94,.18)}
+  .btn-primary:hover{background:var(--accent-dk);transform:translateY(-1px);box-shadow:0 4px 12px rgba(63,109,94,.22)}
+  .btn-primary:active{transform:translateY(0);box-shadow:0 1px 2px rgba(63,109,94,.18)}
   .btn-ghost{border-color:var(--bd);color:var(--ink);background:var(--w)}
-  .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-lt)}
   .btn-danger{color:var(--red);border-color:var(--bd);background:var(--w)}
   .btn-danger:hover{background:var(--red-lt);border-color:var(--red)}
   .btn-sm{padding:5px 10px;font-size:12px}
@@ -85,11 +104,16 @@
   /* ── LOGIN ── */
   .login-wrap{
     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-    background:radial-gradient(circle at 30% 20%,#e8f1ff 0%,transparent 60%),var(--off);
+    background:
+      radial-gradient(circle at 30% 20%,var(--accent-lt) 0%,transparent 60%),
+      radial-gradient(circle at 80% 90%,#eef5f1 0%,transparent 55%),
+      var(--off);
   }
   .login-card{
     width:100%;max-width:380px;background:var(--w);
     border:1px solid var(--bd);border-radius:12px;padding:32px;
+    box-shadow:0 24px 48px -24px rgba(63,109,94,.18);
+    animation:fadeUp .42s var(--ease) both;
   }
   .login-card h1{
     font-family:var(--serif);font-size:26px;font-weight:400;margin-bottom:6px;
@@ -150,34 +174,92 @@
   /* ── DROPZONE ── */
   .drop{
     border:2px dashed var(--bd);border-radius:8px;padding:22px;text-align:center;
-    color:var(--muted);background:var(--off);transition:border-color .15s,background .15s;
+    color:var(--muted);background:var(--off);transition:border-color .18s,background .18s,transform .18s;
   }
-  .drop.hover{border-color:var(--blue);background:var(--blue-lt);color:var(--blue)}
+  .drop.hover{border-color:var(--accent);background:var(--accent-lt);color:var(--accent-dk);transform:scale(1.01)}
   .drop input[type=file]{display:none}
+
+  /* ── UPLOAD QUEUE (per-file confirm + progress) ── */
+  .upload-queue{
+    margin-top:14px;border:1px solid var(--bd);border-radius:8px;
+    background:var(--w);overflow:hidden;
+    animation:fadeUp .25s var(--ease) both;
+  }
+  .upload-queue-head{
+    padding:10px 14px;border-bottom:1px solid var(--bd);
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    font-size:12px;color:var(--muted);background:var(--off);
+  }
+  .upload-queue-head strong{color:var(--ink);font-weight:600}
+  .upload-row{
+    display:grid;grid-template-columns:48px 1fr 200px 90px;gap:12px;
+    align-items:center;padding:10px 14px;border-bottom:1px solid var(--bd);
+    transition:background .18s;
+  }
+  .upload-row:last-child{border-bottom:none}
+  .upload-row .thumb{
+    width:48px;height:48px;border-radius:6px;background:var(--off);
+    object-fit:cover;display:block;border:1px solid var(--bd);
+  }
+  .upload-row .filename{
+    font-size:12px;color:var(--ink);word-break:break-all;
+    line-height:1.4;
+  }
+  .upload-row .filesize{font-size:11px;color:var(--muted);margin-top:2px}
+  .upload-row .date-input{
+    font-size:12px;padding:6px 8px;
+  }
+  .upload-row .status{font-size:11px;color:var(--muted);text-align:right}
+  .upload-row.done .status{color:var(--green);font-weight:600}
+  .upload-row.error{background:var(--red-lt)}
+  .upload-row.error .status{color:var(--red);font-weight:600}
+  .progress{
+    height:4px;background:var(--bd);border-radius:99px;overflow:hidden;
+    margin-top:6px;
+  }
+  .progress-bar{
+    height:100%;background:var(--accent);width:0%;
+    transition:width .15s linear;
+  }
+  .upload-row.done .progress-bar{background:var(--green)}
+  .upload-row.error .progress-bar{background:var(--red)}
+  .upload-queue-foot{
+    padding:10px 14px;display:flex;justify-content:flex-end;gap:8px;
+    border-top:1px solid var(--bd);background:var(--off);
+  }
+  @media(max-width:720px){
+    .upload-row{grid-template-columns:40px 1fr;gap:10px}
+    .upload-row .date-input,.upload-row .status{grid-column:1/-1;text-align:left}
+  }
 
   /* ── TOAST ── */
   .toast{
     position:fixed;bottom:24px;right:24px;z-index:200;
-    background:var(--ink);color:#fff;border-radius:6px;padding:10px 16px;
-    font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.18);
-    opacity:0;transform:translateY(8px);transition:.2s;
+    background:var(--ink);color:#fff;border-radius:8px;padding:11px 18px;
+    font-size:13px;box-shadow:0 10px 28px rgba(0,0,0,.22);
+    opacity:0;transform:translateY(12px) scale(.96);transition:opacity .22s var(--ease),transform .26s var(--ease);
     pointer-events:none;max-width:340px;
   }
-  .toast.show{opacity:1;transform:translateY(0)}
+  .toast.show{opacity:1;transform:translateY(0) scale(1)}
   .toast.error{background:var(--red)}
-  .toast.success{background:var(--green)}
+  .toast.success{background:var(--accent-dk)}
 
   /* ── MODAL ── */
   .modal{
     position:fixed;inset:0;z-index:100;display:none;
     align-items:center;justify-content:center;padding:24px;
-    background:rgba(14,14,14,.55);backdrop-filter:blur(4px);
+    background:rgba(14,14,14,.55);backdrop-filter:blur(6px);
+    opacity:0;transition:opacity .22s var(--ease);
   }
-  .modal.open{display:flex}
+  .modal.open{display:flex;opacity:1}
   .modal-card{
-    background:var(--w);border-radius:10px;padding:24px;
+    background:var(--w);border-radius:12px;padding:24px;
     width:100%;max-width:520px;max-height:90vh;overflow:auto;
+    box-shadow:0 24px 64px -16px rgba(0,0,0,.32);
+    transform:translateY(8px) scale(.98);
+    transition:transform .26s var(--ease);
   }
+  .modal.open .modal-card{transform:translateY(0) scale(1)}
   .modal-card h3{
     font-family:var(--serif);font-size:20px;font-weight:400;margin-bottom:14px;
   }
@@ -189,6 +271,18 @@
   .empty{
     text-align:center;padding:36px;color:var(--muted);font-size:13px;
   }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .series-card{animation:fadeUp .32s var(--ease) both}
+  .series-card:nth-child(2){animation-delay:.04s}
+  .series-card:nth-child(3){animation-delay:.08s}
+  .series-card:nth-child(4){animation-delay:.12s}
+  .series-card:nth-child(5){animation-delay:.16s}
+  .series-card:nth-child(6){animation-delay:.2s}
+  .photo{animation:fadeUp .28s var(--ease) both;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+  .photo:hover{transform:translateY(-2px);box-shadow:0 6px 16px -8px rgba(63,109,94,.32)}
+  .chev{transition:transform .22s var(--ease) !important}
 </style>
 </head>
 <body>
@@ -196,7 +290,7 @@
 <!-- ── LOGIN VIEW ── -->
 <div id="view-login" class="login-wrap">
   <form class="login-card" id="login-form">
-    <h1>Admin <em style="color:var(--blue);font-style:italic">login</em></h1>
+    <h1>Admin <em style="color:var(--accent);font-style:italic">login</em></h1>
     <div class="sub">Sign in to manage your photography gallery.</div>
 
     <label for="li-user">Username</label>
@@ -301,6 +395,9 @@
       <div><label>Shutter</label><input name="ss"/></div>
       <div><label>Aperture</label><input name="ap"/></div>
     </div>
+    <div style="height:10px"></div>
+    <label>Date taken <span style="color:var(--muted);font-weight:300">(optional — falls back to series year)</span></label>
+    <input name="taken_at" type="datetime-local" step="60"/>
     <div style="height:10px"></div>
     <div class="row cols-2">
       <div><label>Replace image (upload)</label><input type="file" name="image" accept="image/*"/></div>
@@ -443,11 +540,12 @@ function renderSeries(){
       </div>
       <div class="body">
         <div class="drop" data-drop>
-          <strong>Drop images here</strong> or <label style="color:var(--blue);cursor:pointer;display:inline">
+          <strong>Drop images here</strong> or <label style="color:var(--accent);cursor:pointer;display:inline">
             browse<input type="file" multiple accept="image/*" data-upload/>
           </label>
           <div style="font-size:12px;margin-top:4px">JPG, PNG, WebP — up to ${(window.MAX_UPLOAD_MB || 25)} MB each</div>
         </div>
+        <div class="upload-queue-host"></div>
         <div class="photos"></div>
       </div>
     `;
@@ -510,13 +608,13 @@ function bindCardEvents(card, series){
   const fileInput = $('[data-upload]', card);
   drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('hover'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('hover'));
-  drop.addEventListener('drop', async e => {
+  drop.addEventListener('drop', e => {
     e.preventDefault();
     drop.classList.remove('hover');
-    if (e.dataTransfer.files.length) await uploadFiles(series, e.dataTransfer.files);
+    if (e.dataTransfer.files.length) showUploadQueue(card, series, e.dataTransfer.files);
   });
-  fileInput.addEventListener('change', async () => {
-    if (fileInput.files.length) await uploadFiles(series, fileInput.files);
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) showUploadQueue(card, series, fileInput.files);
     fileInput.value = '';
   });
 }
@@ -579,19 +677,158 @@ async function deleteSeries(s){
   }
 }
 
-// ─── Photo CRUD ──────────────────────────────────────────────────────────
-async function uploadFiles(series, fileList){
-  const fd = new FormData();
-  Array.from(fileList).forEach(f => fd.append('photos', f));
-  try {
-    toast(`Uploading ${fileList.length} file${fileList.length === 1 ? '' : 's'}…`);
-    const res = await api('POST', `/api/series/${series.id}/photos`, fd);
-    toast(`Uploaded ${res.created.length} photo${res.created.length === 1 ? '' : 's'}`, 'success');
+// ─── Photo upload (per-file with date + progress) ────────────────────────
+function formatBytes(n){
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(0) + ' KB';
+  return (n/1024/1024).toFixed(1) + ' MB';
+}
+
+// Default for the per-file date picker: now, in the user's local timezone,
+// rendered in the YYYY-MM-DDTHH:MM format that <input type="datetime-local"> needs.
+function defaultLocalDateTime(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Show a per-file queue under the dropzone with a date input + per-file
+// progress bar. Each file is uploaded as its own multipart request so we
+// can attach an XHR upload progress listener cleanly.
+function showUploadQueue(card, series, fileList){
+  const host = $('.upload-queue-host', card);
+  if (!host) return;
+  // Wipe any previous queue (e.g. user re-selecting before clicking upload)
+  host.innerHTML = '';
+
+  const files = Array.from(fileList);
+  const defaultDate = defaultLocalDateTime();
+  const queue = document.createElement('div');
+  queue.className = 'upload-queue';
+  queue.innerHTML = `
+    <div class="upload-queue-head">
+      <span><strong>${files.length}</strong> file${files.length === 1 ? '' : 's'} ready</span>
+      <span style="font-size:11px;letter-spacing:.05em;text-transform:uppercase">Set date taken — leave blank to skip</span>
+    </div>
+    <div class="upload-queue-body"></div>
+    <div class="upload-queue-foot">
+      <button type="button" class="btn btn-ghost btn-sm" data-cancel>Cancel</button>
+      <button type="button" class="btn btn-primary btn-sm" data-start>Upload ${files.length} file${files.length === 1 ? '' : 's'}</button>
+    </div>
+  `;
+  host.appendChild(queue);
+
+  const body = $('.upload-queue-body', queue);
+  const rows = files.map((file, idx) => {
+    const row = document.createElement('div');
+    row.className = 'upload-row';
+    row.dataset.idx = idx;
+    const objectUrl = URL.createObjectURL(file);
+    row.innerHTML = `
+      <img class="thumb" src="${objectUrl}" alt=""/>
+      <div>
+        <div class="filename">${escapeHtml(file.name)}</div>
+        <div class="filesize">${formatBytes(file.size)}</div>
+        <div class="progress"><div class="progress-bar"></div></div>
+      </div>
+      <input class="date-input" type="datetime-local" step="60" value="${defaultDate}"/>
+      <span class="status">Pending</span>
+    `;
+    body.appendChild(row);
+    return { row, file, objectUrl };
+  });
+
+  $('[data-cancel]', queue).addEventListener('click', () => {
+    rows.forEach(r => URL.revokeObjectURL(r.objectUrl));
+    queue.remove();
+  });
+
+  $('[data-start]', queue).addEventListener('click', async () => {
+    const startBtn = $('[data-start]', queue);
+    const cancelBtn = $('[data-cancel]', queue);
+    startBtn.disabled = true;
+    cancelBtn.disabled = true;
+    let done = 0, errors = 0;
+    for (const r of rows) {
+      const dateInput = $('.date-input', r.row);
+      // Convert the wall-time picker value to a UTC ISO string so the server
+      // (which may run in UTC) and viewer (in any TZ) round-trip the same
+      // local wall time the user picked.
+      const takenLocal = (dateInput.value || '').trim();
+      let taken_at = '';
+      if (takenLocal) {
+        const d = new Date(takenLocal);
+        if (!Number.isNaN(d.getTime())) taken_at = d.toISOString();
+      }
+      try {
+        await uploadOneWithProgress(series.id, r.file, taken_at, r.row);
+        done++;
+      } catch (err) {
+        errors++;
+        const status = $('.status', r.row);
+        r.row.classList.add('error');
+        status.textContent = err.message || 'Failed';
+      }
+    }
+    rows.forEach(r => URL.revokeObjectURL(r.objectUrl));
+    if (errors) {
+      toast(`Uploaded ${done}, ${errors} failed`, 'error');
+    } else {
+      toast(`Uploaded ${done} photo${done === 1 ? '' : 's'}`, 'success');
+    }
     state.openSeriesId = series.id;
+    // Auto-dismiss the queue panel on full success after a brief delay so the
+    // user sees the green “Done” state before it disappears.
+    if (!errors) setTimeout(() => queue.remove(), 600);
     loadSeries();
-  } catch (err) {
-    toast(err.message, 'error');
-  }
+  });
+}
+
+// Single-file POST to /api/series/:id/photos with progress reporting.
+// Resolves on 2xx, rejects with Error otherwise.
+function uploadOneWithProgress(seriesId, file, takenAt, rowEl){
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('photos', file);
+    fd.append('meta', JSON.stringify([{ taken_at: takenAt || null }]));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/series/${seriesId}/photos`);
+    if (state.token) xhr.setRequestHeader('Authorization', 'Bearer ' + state.token);
+
+    const bar = $('.progress-bar', rowEl);
+    const status = $('.status', rowEl);
+    status.textContent = '0%';
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      bar.style.width = pct + '%';
+      // Once bytes are fully sent we still wait for the server response
+      // (Cloudinary upload + DB insert), so show "Saving…" beyond 100%.
+      status.textContent = pct >= 100 ? 'Saving…' : pct + '%';
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 401) {
+        logout(true);
+        return reject(new Error('Session expired'));
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        bar.style.width = '100%';
+        status.textContent = 'Done';
+        rowEl.classList.add('done');
+        resolve();
+      } else {
+        let msg = `HTTP ${xhr.status}`;
+        try { msg = (JSON.parse(xhr.responseText).error) || msg; } catch {}
+        reject(new Error(msg));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('Network error')));
+    xhr.addEventListener('abort', () => reject(new Error('Aborted')));
+    xhr.send(fd);
+  });
 }
 
 function openEditPhoto(series, p){
@@ -606,6 +843,19 @@ function openEditPhoto(series, p){
   form.ap.value = p.ap || '';
   form.img.value = p.img || '';
   form.image.value = '';
+  // Pre-fill the date picker from the stored ISO string if present.
+  // <input type="datetime-local"> wants "YYYY-MM-DDTHH:MM" in local time.
+  if (p.taken_at) {
+    const d = new Date(p.taken_at);
+    if (!Number.isNaN(d.getTime())) {
+      const pad = n => String(n).padStart(2,'0');
+      form.taken_at.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else {
+      form.taken_at.value = '';
+    }
+  } else {
+    form.taken_at.value = '';
+  }
   $('#modal-edit-photo').classList.add('open');
 }
 
@@ -615,6 +865,14 @@ $('#form-edit-photo').addEventListener('submit', async (e)=>{
   const id = form.id.value;
   const fd = new FormData();
   ['title','cam','lens','iso','ss','ap'].forEach(k => fd.append(k, form[k].value));
+  // Normalize datetime-local wall time -> UTC ISO so it round-trips correctly across timezones.
+  const takenLocal = (form.taken_at.value || '').trim();
+  let takenIso = '';
+  if (takenLocal) {
+    const d = new Date(takenLocal);
+    if (!Number.isNaN(d.getTime())) takenIso = d.toISOString();
+  }
+  fd.append('taken_at', takenIso);
   if (form.image.files[0]) {
     fd.append('image', form.image.files[0]);
   } else {
